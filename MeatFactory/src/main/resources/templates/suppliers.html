@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поставщики</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1>Поставщики</h1>
+        <a href="/index" class="btn btn-secondary">Домой</a>
+    </div>
+
+    <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addSupplierModal">
+        Добавить
+    </button>
+
+    <table class="table table-bordered">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Название</th>
+            <th>Телефон</th>
+            <th>Email</th>
+            <th>Адрес</th>
+            <th>Поставляемые продукты</th>
+            <th>Название сырья</th>
+            <th>Действия</th>
+        </tr>
+        </thead>
+        <tbody id="supplierTableBody">
+        </tbody>
+    </table>
+</div>
+
+<!-- Модальное окно для добавления поставщика -->
+<div class="modal fade" id="addSupplierModal" tabindex="-1" aria-labelledby="addSupplierModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addSupplierModalLabel">Добавить поставщика</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addSupplierForm">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Название</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Телефон</label>
+                        <input type="text" class="form-control" id="phone" name="phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Адрес</label>
+                        <input type="text" class="form-control" id="address" name="address" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Поставляемое сырье для продуктов</label>
+                        <div id="productsCheckboxes"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="suppliedRawMaterial" class="form-label">Название поставляемого сырья</label>
+                        <input type="text" class="form-control" id="suppliedRawMaterial" name="suppliedRawMaterial" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для редактирования поставщика -->
+<div class="modal fade" id="editSupplierModal" tabindex="-1" aria-labelledby="editSupplierModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editSupplierModalLabel">Редактировать поставщика</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editSupplierForm">
+                    <input type="hidden" id="editSupplierId">
+                    <div class="mb-3">
+                        <label for="editName" class="form-label">Название</label>
+                        <input type="text" class="form-control" id="editName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPhone" class="form-label">Телефон</label>
+                        <input type="text" class="form-control" id="editPhone" name="phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editEmail" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="editEmail" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editAddress" class="form-label">Адрес</label>
+                        <input type="text" class="form-control" id="editAddress" name="address" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Поставляемые продукты</label>
+                        <div id="editProductsCheckboxes"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editSuppliedRawMaterial" class="form-label">Название поставляемого сырья</label>
+                        <input type="text" class="form-control" id="editSuppliedRawMaterial" name="suppliedRawMaterial" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function loadSuppliers() {
+        fetch('/suppliers')
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.getElementById('supplierTableBody');
+                tableBody.innerHTML = '';
+                data.forEach(supplier => {
+                    const row = `
+                        <tr>
+                            <td>${supplier.id}</td>
+                            <td>${supplier.name}</td>
+                            <td>${supplier.phone}</td>
+                            <td>${supplier.email}</td>
+                            <td>${supplier.address}</td>
+                            <td>${supplier.products.map(product => product.name).join(', ')}</td>
+                            <td>${supplier.suppliedRawMaterial || ''}</td>
+                            <td>
+                                <button class="btn btn-warning" onclick="openEditModal(${supplier.id})">Редактировать</button>
+                                <button class="btn btn-danger" onclick="deleteSupplier(${supplier.id})">Удалить</button>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            });
+    }
+
+    function loadProductsForSelection(containerId, selectedProducts = []) {
+        fetch('/products')
+            .then(response => response.json())
+            .then(products => {
+                const container = document.getElementById(containerId);
+                container.innerHTML = '';
+                products.forEach(product => {
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.dataset.id = product.id;
+                    checkbox.id = `product_${product.id}`;
+                    checkbox.classList.add('form-check-input');
+                    checkbox.checked = selectedProducts.includes(product.id);
+
+                    const label = document.createElement('label');
+                    label.setAttribute('for', checkbox.id);
+                    label.classList.add('form-check-label');
+                    label.textContent = product.name;
+
+                    const div = document.createElement('div');
+                    div.classList.add('form-check');
+                    div.appendChild(checkbox);
+                    div.appendChild(label);
+
+                    container.appendChild(div);
+                });
+            });
+    }
+
+    document.getElementById('addSupplierForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const supplier = {
+            name: document.getElementById('name').value,
+            phone: document.getElementById('phone').value,
+            email: document.getElementById('email').value,
+            address: document.getElementById('address').value,
+            suppliedRawMaterial: document.getElementById('suppliedRawMaterial').value,
+            products: Array.from(document.querySelectorAll('#productsCheckboxes input[type="checkbox"]:checked')).map(checkbox => ({
+                id: checkbox.dataset.id
+            }))
+        };
+
+        fetch('/suppliers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(supplier)
+        }).then(() => {
+            alert('Поставщик успешно добавлен');
+            loadSuppliers();
+            e.target.reset();
+            bootstrap.Modal.getInstance(document.getElementById('addSupplierModal')).hide();
+        });
+    });
+
+    function openEditModal(id) {
+        fetch(`/suppliers/${id}`)
+            .then(response => response.json())
+            .then(supplier => {
+                document.getElementById('editSupplierId').value = supplier.id;
+                document.getElementById('editName').value = supplier.name;
+                document.getElementById('editPhone').value = supplier.phone;
+                document.getElementById('editEmail').value = supplier.email;
+                document.getElementById('editAddress').value = supplier.address;
+
+                loadProductsForSelection('editProductsCheckboxes', supplier.products.map(product => product.id));
+
+                const modal = new bootstrap.Modal(document.getElementById('editSupplierModal'));
+                modal.show();
+            });
+    }
+
+    document.getElementById('editSupplierForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const supplierId = document.getElementById('editSupplierId').value;
+
+        const supplier = {
+            name: document.getElementById('editName').value,
+            phone: document.getElementById('editPhone').value,
+            email: document.getElementById('editEmail').value,
+            address: document.getElementById('editAddress').value,
+            suppliedRawMaterial: document.getElementById('editSuppliedRawMaterial').value,
+            products: Array.from(document.querySelectorAll('#editProductsCheckboxes input[type="checkbox"]:checked')).map(checkbox => ({
+                id: checkbox.dataset.id
+            }))
+        };
+
+        fetch(`/suppliers/${supplierId}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(supplier)
+        }).then(() => {
+            alert('Поставщик успешно обновлен');
+            loadSuppliers();
+            bootstrap.Modal.getInstance(document.getElementById('editSupplierModal')).hide();
+        });
+    });
+
+    function deleteSupplier(id) {
+        if (confirm('Вы уверены, что хотите удалить этого поставщика?')) {
+            fetch(`/suppliers/${id}`, {
+                method: 'DELETE'
+            }).then(() => {
+                alert('Поставщик успешно удален');
+                loadSuppliers();
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        loadSuppliers();
+        loadProductsForSelection('productsCheckboxes');
+    });
+</script>
+</body>
+</html>

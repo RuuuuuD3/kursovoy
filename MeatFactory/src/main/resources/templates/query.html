@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Запросы к БД</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center">
+    <h1>Запросы к базе данных</h1>
+    <a href="/index" class="btn btn-secondary">Домой</a>
+    </div>
+
+    <div class="mb-3">
+        <label for="querySelect" class="form-label">Выберите запрос:</label>
+        <select class="form-control" id="querySelect" onchange="updateQueryForm()">
+            <option value="">-- Выберите запрос --</option>
+            <option value="employeesByPosition">Список сотрудников по должности</option>
+            <option value="employeesBySalaryRange">Сотрудники по диапазону зарплат</option>
+            <option value="employeesByAge">Сотрудники старше определённого возраста</option>
+        </select>
+    </div>
+
+    <div id="queryFormContainer" class="mb-4"></div>
+
+    <div>
+        <h2>Результаты:</h2>
+        <button id="generateReportButton" class="btn btn-success mb-3" onclick="generateReport()" style="display: none;">
+            Сформировать отчёт
+        </button>
+        <table class="table table-bordered" id="queryResultsTable">
+            <thead>
+            <tr id="queryResultsHead"></tr>
+            </thead>
+            <tbody id="queryResultsBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let lastQueryData = [];
+
+    function updateQueryForm() {
+        const query = document.getElementById('querySelect').value;
+        const formContainer = document.getElementById('queryFormContainer');
+        formContainer.innerHTML = '';
+
+        document.getElementById('generateReportButton').style.display = 'none';
+
+        switch (query) {
+            case 'employeesByPosition':
+                formContainer.innerHTML = `
+                    <form id="queryForm">
+                        <div class="mb-3">
+                            <label for="position" class="form-label">Должность:</label>
+                            <input type="text" class="form-control" id="position" name="position" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Выполнить</button>
+                    </form>`;
+                break;
+
+            case 'employeesBySalaryRange':
+                formContainer.innerHTML = `
+                    <form id="queryForm">
+                        <div class="mb-3">
+                            <label for="minSalary" class="form-label">Минимальная зарплата:</label>
+                            <input type="number" class="form-control" id="minSalary" name="minSalary" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="maxSalary" class="form-label">Максимальная зарплата:</label>
+                            <input type="number" class="form-control" id="maxSalary" name="maxSalary" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Выполнить</button>
+                    </form>`;
+                break;
+
+            case 'employeesByAge':
+                formContainer.innerHTML = `
+                    <form id="queryForm">
+                        <div class="mb-3">
+                            <label for="age" class="form-label">Возраст:</label>
+                            <input type="number" class="form-control" id="age" name="age" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Выполнить</button>
+                    </form>`;
+                break;
+
+            default:
+                formContainer.innerHTML = '';
+        }
+
+        if (formContainer.innerHTML) {
+            document.getElementById('queryForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                executeQuery(query, new FormData(e.target));
+            });
+        }
+    }
+
+    function executeQuery(queryType, formData) {
+        const params = new URLSearchParams(Object.fromEntries(formData.entries()));
+
+        fetch(`/queries/${queryType}?${params.toString()}`, {
+            method: 'GET',
+        })
+            .then(response => response.json())
+            .then(data => {
+                displayResults(data);
+                lastQueryData = data;
+                document.getElementById('generateReportButton').style.display = data.length > 0 ? 'block' : 'none';
+            })
+            .catch(error => alert('Ошибка при выполнении запроса: ' + error.message));
+    }
+
+    function displayResults(data) {
+        const tableHead = document.getElementById('queryResultsHead');
+        const tableBody = document.getElementById('queryResultsBody');
+
+        tableHead.innerHTML = '';
+        tableBody.innerHTML = '';
+
+        if (data.length > 0) {
+            const headers = Object.keys(data[0]);
+            headers.forEach(header => {
+                tableHead.innerHTML += `<th>${header}</th>`;
+            });
+
+            data.forEach(row => {
+                const rowElement = document.createElement('tr');
+                headers.forEach(header => {
+                    rowElement.innerHTML += `<td>${row[header]}</td>`;
+                });
+                tableBody.appendChild(rowElement);
+            });
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="100%">Нет данных для отображения</td></tr>';
+        }
+    }
+
+    function generateReport() {
+        if (lastQueryData.length === 0) {
+            alert("Нет данных для отчёта");
+            return;
+        }
+
+        const rows = [];
+        const headers = Object.keys(lastQueryData[0]);
+
+        rows.push(headers.join('\t'));
+
+        lastQueryData.forEach(row => {
+            const values = headers.map(header => row[header]);
+            rows.push(values.join('\t'));
+        });
+
+        const txtContent = rows.join('\n');
+        const blob = new Blob([txtContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'report.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+</script>
+</body>
+</html>

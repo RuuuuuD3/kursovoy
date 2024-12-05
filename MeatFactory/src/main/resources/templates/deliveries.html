@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление доставками</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+    <h1>Доставки</h1>
+    <button class="btn btn-primary mb-3" onclick="showAddDeliveryForm()">Добавить доставку</button>
+    <table class="table table-bordered" id="deliveriesTable">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Заказы</th>
+            <th>Дата доставки</th>
+            <th>Статус</th>
+            <th>Действия</th>
+        </tr>
+        </thead>
+        <tbody id="deliveriesTableBody"></tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="deliveryModal" tabindex="-1" aria-labelledby="deliveryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deliveryModalLabel">Добавить доставку</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <form id="deliveryForm">
+                    <div class="mb-3">
+                        <label for="orders" class="form-label">Выберите заказы</label>
+                        <div id="orders"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="deliveryDate" class="form-label">Дата доставки</label>
+                        <input type="date" class="form-control" id="deliveryDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Статус</label>
+                        <input type="text" class="form-control" id="status" required>
+                    </div>
+                    <input type="hidden" id="deliveryId">
+                    <button type="submit" class="btn btn-primary" id="submitButton">Сохранить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для удаления доставки -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Подтвердите удаление</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить эту доставку?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteButton">Удалить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let currentDeliveryId = null;
+
+    async function loadDeliveries() {
+        const response = await fetch('/deliveries');
+        const deliveries = await response.json();
+        const tableBody = document.getElementById('deliveriesTableBody');
+        tableBody.innerHTML = '';
+
+        deliveries.forEach(delivery => {
+            tableBody.innerHTML += `
+                <tr>
+                    <td>${delivery.id}</td>
+                    <td>${delivery.order.id}</td>
+                    <td>${delivery.deliveryDate}</td>
+                    <td>${delivery.status}</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" onclick="editDelivery(${delivery.id})">Изменить</button>
+                        <button class="btn btn-danger btn-sm" onclick="confirmDelete(${delivery.id})">Удалить</button>
+                    </td>
+                </tr>`;
+        });
+    }
+
+    async function showAddDeliveryForm() {
+        document.getElementById('deliveryModalLabel').textContent = 'Добавить доставку';
+        document.getElementById('submitButton').textContent = 'Сохранить';
+        document.getElementById('deliveryForm').reset();
+        document.getElementById('deliveryId').value = '';
+
+        const ordersResponse = await fetch('/orders');
+        const orders = await ordersResponse.json();
+        const ordersContainer = document.getElementById('orders');
+        ordersContainer.innerHTML = '';
+
+        orders.forEach(order => {
+            const checkbox = document.createElement('div');
+            checkbox.innerHTML = `
+                <input type="checkbox" class="form-check-input" id="order${order.id}" value="${order.id}">
+                <label class="form-check-label" for="order${order.id}">Заказ ID: ${order.id}</label>
+            `;
+            ordersContainer.appendChild(checkbox);
+        });
+
+        new bootstrap.Modal(document.getElementById('deliveryModal')).show();
+    }
+
+    async function editDelivery(id) {
+        const response = await fetch(`/deliveries/${id}`);
+        const delivery = await response.json();
+
+        document.getElementById('deliveryModalLabel').textContent = 'Редактировать доставку';
+        document.getElementById('submitButton').textContent = 'Обновить';
+        document.getElementById('deliveryDate').value = delivery.deliveryDate;
+        document.getElementById('status').value = delivery.status;
+        document.getElementById('deliveryId').value = delivery.id;
+
+        const ordersResponse = await fetch('/orders');
+        const orders = await ordersResponse.json();
+        const ordersContainer = document.getElementById('orders');
+        ordersContainer.innerHTML = '';
+
+        orders.forEach(order => {
+            const checkbox = document.createElement('div');
+            checkbox.innerHTML = `
+                <input type="checkbox" class="form-check-input" id="order${order.id}" value="${order.id}" ${delivery.order.id === order.id ? 'checked' : ''}>
+                <label class="form-check-label" for="order${order.id}">Заказ ID: ${order.id}</label>
+            `;
+            ordersContainer.appendChild(checkbox);
+        });
+
+        new bootstrap.Modal(document.getElementById('deliveryModal')).show();
+    }
+
+    function confirmDelete(id) {
+        currentDeliveryId = id;
+        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    }
+
+    document.getElementById('deliveryForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const selectedOrders = [];
+        document.querySelectorAll('#orders input[type="checkbox"]:checked').forEach(checkbox => {
+            selectedOrders.push({ id: checkbox.value });
+        });
+
+        const deliveryData = {
+            order: selectedOrders,
+            deliveryDate: document.getElementById('deliveryDate').value,
+            status: document.getElementById('status').value
+        };
+
+        const deliveryId = document.getElementById('deliveryId').value;
+        const url = deliveryId ? `/deliveries/${deliveryId}` : '/deliveries';
+        const method = deliveryId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(deliveryData)
+        });
+
+        if (response.ok) {
+            loadDeliveries();
+            bootstrap.Modal.getInstance(document.getElementById('deliveryModal')).hide();
+        } else {
+            alert('Ошибка при сохранении доставки.');
+        }
+    });
+
+    document.getElementById('confirmDeleteButton').addEventListener('click', async () => {
+        const response = await fetch(`/deliveries/${currentDeliveryId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            loadDeliveries();
+            bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+        } else {
+            alert('Ошибка при удалении доставки.');
+        }
+    });
+
+    loadDeliveries();
+</script>
+</body>
+</html>

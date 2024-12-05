@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление заказами</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+    <h1>Заказы</h1>
+    <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addOrderModal">Добавить заказ</button>
+    <table class="table table-bordered" id="ordersTable">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Клиент</th>
+            <th>Сотрудники</th>
+            <th>Продукты</th>
+            <th>Дата заказа</th>
+            <th>Общая сумма</th>
+            <th>Действия</th>
+        </tr>
+        </thead>
+        <tbody id="ordersTableBody"></tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="editOrderModal" tabindex="-1" aria-labelledby="editOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editOrderModalLabel">Редактировать заказ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editOrderForm">
+                    <input type="hidden" id="editOrderId"> <!-- Для хранения ID редактируемого заказа -->
+
+                    <!-- Повторите поля как в модале для добавления -->
+                    <div class="mb-3">
+                        <label for="editCustomerSelect" class="form-label">Клиент</label>
+                        <select class="form-select" id="editCustomerSelect" required></select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Сотрудники</label>
+                        <div id="editEmployeeCheckboxes"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Продукты</label>
+                        <div id="editProductCheckboxes"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editOrderDate" class="form-label">Дата заказа</label>
+                        <input type="date" class="form-control" id="editOrderDate" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editTotalAmount" class="form-label">Общая сумма</label>
+                        <input type="number" class="form-control" id="editTotalAmount" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-primary" onclick="updateOrder()">Сохранить изменения</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="addOrderModal" tabindex="-1" aria-labelledby="addOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addOrderModalLabel">Добавить заказ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addOrderForm">
+                    <!-- Выбор клиента -->
+                    <div class="mb-3">
+                        <label for="customerSelect" class="form-label">Клиент</label>
+                        <select class="form-select" id="customerSelect" required>
+                            <!-- Опции клиентов будут загружены через JS -->
+                        </select>
+                    </div>
+
+                    <!-- Выбор сотрудников -->
+                    <div class="mb-3">
+                        <label class="form-label">Сотрудники</label>
+                        <div id="employeeCheckboxes"></div>
+                    </div>
+
+                    <!-- Выбор товаров -->
+                    <div class="mb-3">
+                        <label class="form-label">Продукты</label>
+                        <div id="productCheckboxes"></div>
+                    </div>
+
+                    <!-- Дата заказа -->
+                    <div class="mb-3">
+                        <label for="orderDate" class="form-label">Дата заказа</label>
+                        <input type="date" class="form-control" id="orderDate" required>
+                    </div>
+
+                    <!-- Общая сумма -->
+                    <div class="mb-3">
+                        <label for="totalAmount" class="form-label">Общая сумма</label>
+                        <input type="number" class="form-control" id="totalAmount" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-primary" onclick="addOrder()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function addOrder() {
+        const customerId = document.getElementById('customerSelect').value;
+        const employeeIds = Array.from(document.querySelectorAll('#employeeCheckboxes input:checked')).map(input => input.value);
+        const productIds = Array.from(document.querySelectorAll('#productCheckboxes input:checked')).map(input => input.value);
+        const orderDate = document.getElementById('orderDate').value;
+        const totalAmount = parseFloat(document.getElementById('totalAmount').value);
+
+        if (!customerId || !orderDate || !totalAmount || employeeIds.length === 0 || productIds.length === 0) {
+            alert('Все поля должны быть заполнены.');
+            return;
+        }
+
+        const newOrder = {
+            customerId,
+            employeeIds,
+            productIds,
+            orderDate,
+            totalAmount,
+        };
+
+        try {
+            const response = await fetch('/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newOrder),
+            });
+
+            if (response.ok) {
+                alert('Заказ успешно добавлен.');
+                loadOrders();
+            } else {
+                const error = await response.json();
+                alert(`Ошибка сервера: ${error.message}`);
+            }
+        } catch (error) {
+            console.error('Ошибка добавления заказа:', error);
+            alert('Ошибка при добавлении заказа.');
+        }
+    }
+
+
+    async function updateOrder() {
+        const orderId = document.getElementById('editOrderId').value;
+        const customerId = document.getElementById('editCustomerSelect').value;
+        const employeeIds = Array.from(document.querySelectorAll('#editEmployeeCheckboxes input:checked')).map(input => input.value);
+        const productIds = Array.from(document.querySelectorAll('#editProductCheckboxes input:checked')).map(input => input.value);
+        const orderDate = document.getElementById('editOrderDate').value;
+        const totalAmount = parseFloat(document.getElementById('editTotalAmount').value);
+
+        if (!customerId || !orderDate || !totalAmount || employeeIds.length === 0 || productIds.length === 0) {
+            alert('Все поля должны быть заполнены.');
+            return;
+        }
+
+        const updatedOrder = {
+            customerId: { id: customerId },
+            employeeIds,
+            productIds,
+            orderDate,
+            totalAmount,
+        };
+
+        try {
+            const response = await fetch(`/orders/${orderId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedOrder),
+            });
+
+            if (response.ok) {
+                alert('Заказ успешно обновлен.');
+                loadOrders();
+                const editModal = bootstrap.Modal.getInstance(document.getElementById('editOrderModal'));
+                editModal.hide();
+            } else {
+                const error = await response.json();
+                alert(`Ошибка сервера: ${error.message}`);
+            }
+        } catch (error) {
+            console.error('Ошибка обновления заказа:', error);
+            alert('Ошибка при обновлении заказа.');
+        }
+    }
+
+
+    async function loadSelectOptions() {
+        try {
+            const [customers, employees, products] = await Promise.all([
+                fetch('/customers').then(res => res.json()),
+                fetch('/employees').then(res => res.json()),
+                fetch('/products').then(res => res.json())
+            ]);
+
+            const customerSelect = document.getElementById('customerSelect');
+            const employeeCheckboxes = document.getElementById('employeeCheckboxes');
+            const productCheckboxes = document.getElementById('productCheckboxes');
+
+            customerSelect.innerHTML = customers.map(customer =>
+                `<option value="${customer.id}">${customer.name}</option>`
+            ).join('');
+
+            employeeCheckboxes.innerHTML = employees.map(employee =>
+                `<div class="form-check">
+                <input class="form-check-input" type="checkbox" value="${employee.id}" id="employee-${employee.id}">
+                <label class="form-check-label" for="employee-${employee.id}">
+                    ${employee.name}
+                </label>
+            </div>`
+            ).join('');
+
+            productCheckboxes.innerHTML = products.map(product =>
+                `<div class="form-check">
+                <input class="form-check-input" type="checkbox" value="${product.id}" id="product-${product.id}">
+                <label class="form-check-label" for="product-${product.id}">
+                    ${product.name}
+                </label>
+            </div>`
+            ).join('');
+        } catch (error) {
+            console.error('Ошибка загрузки данных:', error);
+        }
+    }
+
+    async function editOrder(orderId) {
+        try {
+            const response = await fetch(`/orders/${orderId}`);
+            const order = await response.json();
+
+            document.getElementById('editOrderId').value = order.id;
+            document.getElementById('editOrderDate').value = order.orderDate;
+            document.getElementById('editTotalAmount').value = order.totalAmount;
+
+            const customerSelect = document.getElementById('editCustomerSelect');
+            const customers = await fetch('/customers').then(res => res.json());  // Замените на ваш путь для получения клиентов
+
+            customerSelect.innerHTML = '';
+
+            customers.forEach(customer => {
+                const option = document.createElement('option');
+                option.value = customer.id;
+                option.textContent = customer.name;
+                customerSelect.appendChild(option);
+            });
+
+            customerSelect.value = order.customer.id;
+
+            const employeeCheckboxes = document.getElementById('editEmployeeCheckboxes');
+            employeeCheckboxes.innerHTML = '';
+            const employees = await fetch('/employees').then(res => res.json());
+            employees.forEach(employee => {
+                employeeCheckboxes.innerHTML += `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="${employee.id}" id="edit-employee-${employee.id}" ${
+                    order.employees.some(e => e.id === employee.id) ? 'checked' : ''
+                }>
+                <label class="form-check-label" for="edit-employee-${employee.id}">
+                    ${employee.name}
+                </label>
+            </div>`;
+            });
+
+            const productCheckboxes = document.getElementById('editProductCheckboxes');
+            productCheckboxes.innerHTML = '';
+            const products = await fetch('/products').then(res => res.json());
+            products.forEach(product => {
+                productCheckboxes.innerHTML += `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="${product.id}" id="edit-product-${product.id}" ${
+                    order.products.some(p => p.id === product.id) ? 'checked' : ''
+                }>
+                <label class="form-check-label" for="edit-product-${product.id}">
+                    ${product.name}
+                </label>
+            </div>`;
+            });
+
+            const editModal = new bootstrap.Modal(document.getElementById('editOrderModal'));
+            editModal.show();
+
+        } catch (error) {
+            console.error('Ошибка загрузки данных для редактирования:', error);
+        }
+    }
+
+    async function loadOrders() {
+        try {
+            const response = await fetch('/orders');
+            const orders = await response.json();
+            const tableBody = document.getElementById('ordersTableBody');
+            tableBody.innerHTML = '';
+
+            orders.forEach(order => {
+                const customerName = order.customer ? order.customer.name : 'Неизвестно';
+                const employeeNames = order.employees.map(employee => employee.name).join(', ') || 'Нет сотрудников';
+                const productNames = order.products.map(product => product.name).join(', ') || 'Нет товаров';
+
+                tableBody.innerHTML += `
+                <tr>
+                    <td>${order.id}</td>
+                    <td>${customerName}</td>
+                    <td>${employeeNames}</td>
+                    <td>${productNames}</td>
+                    <td>${order.orderDate}</td>
+                    <td>${order.totalAmount}</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm me-1" onclick="editOrder(${order.id})">Редактировать</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteOrder(${order.id})">Удалить</button>
+                    </td>
+                </tr>`;
+
+            });
+        } catch (error) {
+            console.error('Ошибка загрузки заказов:', error);
+        }
+    }
+
+    async function deleteOrder(id) {
+        if (!confirm('Вы уверены, что хотите удалить этот заказ?')) return;
+
+        try {
+            const response = await fetch(`/orders/${id}`, { method: 'DELETE' });
+
+            if (response.ok) {
+                loadOrders();
+            } else {
+                alert('Ошибка удаления заказа');
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadOrders();
+        loadSelectOptions();
+    });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
