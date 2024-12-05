@@ -35,9 +35,8 @@
             </div>
             <div class="modal-body">
                 <form id="editOrderForm">
-                    <input type="hidden" id="editOrderId"> <!-- Для хранения ID редактируемого заказа -->
+                    <input type="hidden" id="editOrderId">
 
-                    <!-- Повторите поля как в модале для добавления -->
                     <div class="mb-3">
                         <label for="editCustomerSelect" class="form-label">Клиент</label>
                         <select class="form-select" id="editCustomerSelect" required></select>
@@ -82,33 +81,27 @@
             </div>
             <div class="modal-body">
                 <form id="addOrderForm">
-                    <!-- Выбор клиента -->
                     <div class="mb-3">
                         <label for="customerSelect" class="form-label">Клиент</label>
                         <select class="form-select" id="customerSelect" required>
-                            <!-- Опции клиентов будут загружены через JS -->
                         </select>
                     </div>
 
-                    <!-- Выбор сотрудников -->
                     <div class="mb-3">
                         <label class="form-label">Сотрудники</label>
                         <div id="employeeCheckboxes"></div>
                     </div>
 
-                    <!-- Выбор товаров -->
                     <div class="mb-3">
                         <label class="form-label">Продукты</label>
                         <div id="productCheckboxes"></div>
                     </div>
 
-                    <!-- Дата заказа -->
                     <div class="mb-3">
                         <label for="orderDate" class="form-label">Дата заказа</label>
                         <input type="date" class="form-control" id="orderDate" required>
                     </div>
 
-                    <!-- Общая сумма -->
                     <div class="mb-3">
                         <label for="totalAmount" class="form-label">Общая сумма</label>
                         <input type="number" class="form-control" id="totalAmount" required>
